@@ -171,7 +171,7 @@ def main():
             count += len(jsonFromApi.illusts)
             processItems(api, jsonFromApi.illusts, logger, mongoDB)
             if nIllust != 0 and count >= nIllust:
-                logger.info('Processed:{} of {}. Break.'.format(count, args.nIllust))
+                logger.info('Processed : {} of {}. Break.'.format(count, args.nIllust))
                 break
     logger.info('Finished processing all items. Number of item: {}'.format(count))
 
