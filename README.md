@@ -10,11 +10,13 @@ pip install -r requirements.txt
 ```
 
 - Add `AuthData.py` to the root directory. This stores your auth data in order to login.
-
+    - *As of Mar. 19th 2021, login with username/password cannot be used, use refresh_token*
+    - Please refer to [Pixivpy3 repository](https://github.com/upbit/pixivpy) about how to get refresh_token.
 ```AuthData.py
-USERNAME = 'user'           # Your username
-PASSWORD = 'password'       # Your password
-MYUSERID = <id>             # Your id
+USERNAME = 'user'               # Your username (Currently unsupported)
+PASSWORD = 'password'           # Your password (Currently unsupported)
+REFRESH_TOKEN = 'refresh_token' # Refresh token
+MYUSERID = <id>                 # Your id
 ```
 - (Optional) Add `MongoData.py` to the root directory if you would like to use MongoDB for saving metadata.
 

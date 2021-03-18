@@ -156,15 +156,16 @@ def main():
     logger.info('PixivApi initializing...')
     api = AppPixivAPI()
     logger.info('PixivApi auth starting...')
-    api.login(AuthData.USERNAME, AuthData.PASSWORD)
+    api.auth(refresh_token=AuthData.REFRESH_TOKEN)
 
     # Get the images from my bookmark.
     nIllust = args.nIllust
+    count = 0
     logger.info('PixivApi starts getting bookmarked illusts. (target id = {})'.format(AuthData.MYUSERID))
     jsonFromApi = api.user_bookmarks_illust(AuthData.MYUSERID,)
-    count = len(jsonFromApi['illusts'])
+    count += len(jsonFromApi['illusts'])
     processItems(api, jsonFromApi.illusts, logger, mongoDB)
-    if nIllust != 0 and count >= nIllust:
+    if nIllust == 0 or count < nIllust:
         while jsonFromApi.next_url is not None:
             next_qs = api.parse_qs(jsonFromApi.next_url)
             jsonFromApi = api.user_bookmarks_illust(**next_qs)
@@ -173,6 +174,7 @@ def main():
             if nIllust != 0 and count >= nIllust:
                 logger.info('Processed : {} of {}. Break.'.format(count, args.nIllust))
                 break
+            logger.debug('Iteration finished.')
     logger.info('Finished processing all items. Number of item: {}'.format(count))
 
 if __name__ == '__main__':
