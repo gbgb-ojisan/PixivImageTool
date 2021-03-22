@@ -1,6 +1,5 @@
 AuthData.py
 MongoData.py
-pixiv_auth.py
 
 logs/
 *.log
