@@ -31,8 +31,6 @@ parser.add_argument('--logdir', default='./logs', type=str,
     help='The directory to output the log file.')
 parser.add_argument('--logLevel', default='INFO', type=str,
     help='Logging level (INFO, DEBUG)')
-parser.add_argument('--enableMongoDB', action='store_true',
-    help='Enable to store the metadata of images to MongoDB.')
 args = parser.parse_args()
 
 # Source: https://medium.com/lsc-psd/python%E3%81%AE%E3%83%AD%E3%82%B0%E5%87%BA%E5%8A%9B%E3%83%81%E3%83%BC%E3%83%88%E3%82%B7%E3%83%BC%E3%83%88-%E3%81%99%E3%81%90%E3%81%AB%E4%BD%BF%E3%81%88%E3%82%8B%E3%82%BD%E3%83%BC%E3%82%B9%E3%82%B3%E3%83%BC%E3%83%89%E4%BB%98-4f2ed1449674
@@ -80,14 +78,8 @@ def escape_filename(filename_str):
 # Define the processing for illusts (metadata)
 def processItems(aapi, illusts, logger, mongoDB=None):
     processedJson = downloadImgs(aapi, illusts, logger)
-    if args.enableMongoDB:
-        assert mongoDB is not None
-        for jsonData in processedJson:
-            jsonData['insert_date'] = datetime.now()
-            mongoDB.findOrCreate(jsonData, 'id')
 
 # Download the large images.
-# Return Array of Illust 
 def downloadImgs(aapi, illusts, logger):
     # Parse datetime string in json from API for filename format.
     def _formatDateStr(convert_str):
@@ -122,10 +114,7 @@ def downloadImgs(aapi, illusts, logger):
                 filename = escape_filename('{}_{}_{}{}'.format(prefix_filename, prefix_ex, title, ext))
                 meta_page['image_local_path'] = filename
                 logger.debug(filename)
-                if not (os.path.exists(os.path.join(args.savedir, filename))):
-                    aapi.download(url, path=args.savedir, name=filename)
-                else:
-                    logger.debug('Skip saving : {}'.format(filename))
+                aapi.download(url, path=args.savedir, name=filename)
                 time.sleep(0.3)
         else:
             # Process single image.
@@ -134,10 +123,7 @@ def downloadImgs(aapi, illusts, logger):
             filename = escape_filename('{}_{}{}'.format(prefix_filename, title, ext))
             illust['meta_single_page']['image_local_path'] = filename
             logger.debug(filename)
-            if not (os.path.exists(os.path.join(args.savedir, filename))):
-                aapi.download(url, path=args.savedir, name=filename)
-            else:
-                logger.debug('Skip saving : {}'.format(filename))
+            aapi.download(url, path=args.savedir, name=filename)
             time.sleep(1)
     
     return illusts
@@ -151,35 +137,26 @@ def main():
         os.makedirs(log_folder)
     logger = setup_logger(log_file, args.logLevel)
 
-    # Init MongoDB
-    if args.enableMongoDB:
-        import utils.MongoWrapper as MongoWrapper
-        import MongoData
-        logger.info('MongoDB initialization')
-        logger.info('[Mongo Connection] Host:{}, Port:{}, DB:{}, Collection:{}'.format(MongoData.HOST, MongoData.PORT, MongoData.DBNAME, MongoData.COLLECTIONNAME))
-        mongoDB = MongoWrapper.MongoWrapper(MongoData.HOST, MongoData.PORT, MongoData.DBNAME, MongoData.COLLECTIONNAME)
-    else:
-        mongoDB = None
-
     # Init AppPixivAPI.
     logger.info('PixivApi initializing...')
     api = AppPixivAPI()
     logger.info('PixivApi auth starting...')
     api.auth(refresh_token=AuthData.REFRESH_TOKEN)
 
-    # Get the images from my bookmark.
+    # Get the images from ranking.
     nIllust = args.nIllust
     count = 0
-    logger.info('PixivApi starts getting bookmarked illusts. (target id = {})'.format(AuthData.MYUSERID))
-    jsonFromApi = api.user_bookmarks_illust(AuthData.MYUSERID,)
+    logger.info('PixivApi starts getting ranking (popular) illusts.')
+    target_duration = 'month'
+    jsonFromApi = api.illust_ranking(target_duration)
     count += len(jsonFromApi['illusts'])
-    processItems(api, jsonFromApi.illusts, logger, mongoDB)
+    processItems(api, jsonFromApi.illusts, logger)
     if nIllust == 0 or count < nIllust:
         while jsonFromApi.next_url is not None:
             next_qs = api.parse_qs(jsonFromApi.next_url)
-            jsonFromApi = api.user_bookmarks_illust(**next_qs)
+            jsonFromApi = api.illust_ranking(**next_qs)
             count += len(jsonFromApi.illusts)
-            processItems(api, jsonFromApi.illusts, logger, mongoDB)
+            processItems(api, jsonFromApi.illusts, logger)
             if nIllust != 0 and count >= nIllust:
                 logger.info('Processed : {} of {}. Break.'.format(count, args.nIllust))
                 break

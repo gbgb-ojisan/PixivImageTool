@@ -14,5 +14,8 @@ class MongoWrapper:
     def insert_one(self, document):
         return self.collection.insert_one(document)
 
+    def findOrCreate(self, document, key):
+        return self.collection.update_one({key:document[key]}, {"$setOnInsert": document}, upsert=True)
+
     def insert_many(self, documents):
         return self.collection.insert_many(documents)
