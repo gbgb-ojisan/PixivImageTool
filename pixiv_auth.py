@@ -15,6 +15,7 @@ from urllib.parse import urlencode
 from selenium import webdriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
 
 import AuthData
 
@@ -78,18 +79,27 @@ def login(headlessMode):
     }
 
     driver.get(f"{LOGIN_URL}?{urlencode(login_params)}")
-    time.sleep(3)
+    driver.implicitly_wait(10)
 
     # Auto-login
-    usernameInputElm = driver.find_element_by_xpath('//*[@id="LoginComponent"]/form/div[1]/div[1]/input')
-    usernameInputElm.send_keys(AuthData.USERNAME)
-    time.sleep(1)
-    usernameInputElm = driver.find_element_by_xpath('//*[@id="LoginComponent"]/form/div[1]/div[2]/input')
-    usernameInputElm.send_keys(AuthData.PASSWORD)
-    time.sleep(2)
-    enterElm = driver.find_element_by_xpath('//*[@id="LoginComponent"]/form/button')
-    enterElm.click()
-
+    # Finding by XPath does not work well, so get elements by workaround. 
+    try:
+        appElm = driver.find_element(By.ID, 'app-mount-point')
+        fieldsetElms = appElm.find_elements(By.TAG_NAME, 'fieldset')
+        usernameInputElm = fieldsetElms[0].find_element(By.TAG_NAME, 'input')
+        usernameInputElm.send_keys(AuthData.USERNAME)
+        time.sleep(1)
+        passwordInputElm = fieldsetElms[1].find_element(By.TAG_NAME, 'input')
+        passwordInputElm.send_keys(AuthData.PASSWORD)
+        time.sleep(2)
+        formElm = driver.find_element(By.TAG_NAME, 'form')
+        loginElm = formElm.find_element(By.TAG_NAME, 'button')
+        loginElm.click()
+    except Exception as e:
+        print('Failed to operate elms.')
+        print(e)
+        return
+    
     while True:
         # wait for login
         if driver.current_url[:40] == "https://accounts.pixiv.net/post-redirect":
